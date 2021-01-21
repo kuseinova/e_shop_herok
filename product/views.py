@@ -10,8 +10,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .filters import ProductFilter
-from .models import Product, Category
-from .serializers import ProductSerializer, CategorySerializer, CreateUpdateProductSerializer
+from .models import Product, Category, Comment
+from .serializers import ProductSerializer, CategorySerializer, \
+    CreateUpdateProductSerializer, CommentSerializer, ProductListSerializer
 
 # @api_view(['GET'])
 # def product_list(request):
@@ -70,8 +71,10 @@ class ProductViewSet(viewsets.ModelViewSet):
     filter_class = ProductFilter
 
     def get_serializer_class(self):
-        if self.action == 'list' or self.action == 'retrieve':
+        if self.action == 'retrieve':
             return ProductSerializer
+        elif self.action == 'list':
+            return ProductListSerializer
         return CreateUpdateProductSerializer
 
     def get_permissions(self):
@@ -80,7 +83,7 @@ class ProductViewSet(viewsets.ModelViewSet):
             permissions = []
         else:
             permissions = [p.IsAdminUser]
-        return [permissions() for permission in permissions]
+        return [permission() for permission in permissions]
 
     @action(methods=['get'], detail=False)
     def search(self, request):
@@ -91,4 +94,13 @@ class ProductViewSet(viewsets.ModelViewSet):
                                        Q(description__icontains=q))
         serializer = ProductSerializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class CommentCreate(CreateAPIView):
+    queryset = Comment.objects.all()
+    serializer_class = CommentSerializer
+    permission_classes = [p.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)
 
